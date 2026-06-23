@@ -1,0 +1,40 @@
+name: Build VHT-32X6
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main   # hoặc branch bạn đang dùng (main của fork)
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential clang git python3 python3-pip gawk libncurses5-dev libssl-dev libelf-dev zlib1g-dev unzip wget curl rsync
+
+      - name: Update feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Prepare config for VHT-32X6
+        run: |
+          git checkout main
+          cp defconfig/mt7981-ax3000.config .config || true
+          ./scripts/prepare-vht-32x6-config.sh || true   # nếu có script này
+          make defconfig
+
+      - name: Build firmware
+        run: |
+          make -j2 V=s   # -j2 để tránh timeout, bạn có thể tăng nếu cần
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: immortalwrt-vht-32x6
+          path: bin/targets/mediatek/filogic/*
+          retention-days: 7
